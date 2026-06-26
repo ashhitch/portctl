@@ -32,12 +32,25 @@ Built with [Bun](https://bun.sh) and
 ## Install
 
 ```bash
+# from npm
+npm install -g @ashhitch/portctl
+# or run once without installing
+npx @ashhitch/portctl
+```
+
+For local development:
+
+```bash
 bun install
 ```
 
 ## Run
 
 ```bash
+# via the installed binary
+portctl
+
+# from source
 bun index.ts
 # or
 bun run start

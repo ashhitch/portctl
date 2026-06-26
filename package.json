@@ -1,5 +1,5 @@
 {
-  "name": "portctl",
+  "name": "@ashhitch/portctl",
   "version": "0.1.0",
   "type": "module",
   "bin": {
