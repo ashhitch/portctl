@@ -1,6 +1,6 @@
 {
   "name": "@ashhitch/portctl",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "bin": {
     "portctl": "dist/index.js"
@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "start": "bun index.ts",
-    "build": "bun build index.ts --outfile=dist/index.js --target=node --external @opentui/core --banner \"#!/usr/bin/env node\" && chmod +x dist/index.js"
+    "build": "bun build index.ts --outfile=dist/index.js --target=bun --external @opentui/core --banner \"#!/usr/bin/env bun\" && chmod +x dist/index.js"
   },
   "dependencies": {
     "@opentui/core": "^0.4.2"

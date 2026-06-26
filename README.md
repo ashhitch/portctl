@@ -31,12 +31,18 @@ Built with [Bun](https://bun.sh) and
 
 ## Install
 
+The CLI is built on [Bun](https://bun.sh) and OpenTUI's native renderer, so
+Bun must be installed and on your `PATH` to run it.
+
 ```bash
 # from npm
 npm install -g @ashhitch/portctl
 # or run once without installing
 npx @ashhitch/portctl
 ```
+
+> `npx`/`npm` only fetch the package — they don't install Bun. If you don't have
+> it yet, install it first: `curl -fsSL https://bun.sh/install | bash`
 
 For local development:
 
