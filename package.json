@@ -1,0 +1,11 @@
+{
+  "name": "portctl",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "bun index.ts"
+  },
+  "dependencies": {
+    "@opentui/core": "^0.4.2"
+  }
+}
