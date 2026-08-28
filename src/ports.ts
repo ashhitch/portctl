@@ -1,3 +1,5 @@
+import { spawn } from "node:child_process"
+
 export interface PortEntry {
   port: number
   protocol: string
@@ -20,19 +22,34 @@ function detectPlatform(): Platform {
   return "other"
 }
 
+interface RunResult {
+  code: number
+  stdout: string
+  stderr: string
+}
+
+/** Spawn a command and resolve with its exit code and captured stdout/stderr. Works on Bun and Node.js. */
+function runProcess(cmd: string, args: string[]): Promise<RunResult> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(cmd, args, { stdio: ["ignore", "pipe", "pipe"] })
+    let stdout = ""
+    let stderr = ""
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk.toString()
+    })
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk.toString()
+    })
+    child.on("error", reject) // e.g. command not found (ENOENT)
+    child.on("close", (code) => resolve({ code: code ?? -1, stdout, stderr }))
+  })
+}
+
 /** Run a shell command and return its stdout as a string. Throws on spawn failure. */
 async function run(cmd: string, args: string[]): Promise<string> {
-  const proc = Bun.spawn([cmd, ...args], {
-    stdout: "pipe",
-    stderr: "pipe",
-  })
-  const exitCode = await proc.exited
-  const stdout = await new Response(proc.stdout).text()
-  if (exitCode !== 0) {
-    // Non-zero exit is fine for our purposes (e.g. lsof returns 1 when no matches);
-    // we just parse whatever stdout we got.
-  }
-  return stdout
+  // Non-zero exit is fine for our purposes (e.g. lsof returns 1 when no matches);
+  // we just parse whatever stdout we got.
+  return (await runProcess(cmd, args)).stdout
 }
 
 /** Parse a port string into a validated 1-65535 integer, or null if invalid. */
@@ -290,13 +307,9 @@ export async function killProcess(pid: number): Promise<KillResult> {
   try {
     if (platform === "win32") {
       // taskkill /F /PID <pid>
-      const proc = Bun.spawn(["taskkill", "/F", "/PID", String(pid)], {
-        stdout: "pipe",
-        stderr: "pipe",
-      })
-      const code = await proc.exited
+      const { code, stderr } = await runProcess("taskkill", ["/F", "/PID", String(pid)])
       if (code === 0) return { ok: true }
-      const err = (await new Response(proc.stderr).text()).trim()
+      const err = stderr.trim()
       return { ok: false, error: err || `taskkill exited with code ${code}` }
     }
     // unix: try SIGTERM then SIGKILL
