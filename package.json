@@ -1,9 +1,9 @@
 {
   "name": "@ashhitch/portctl",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "type": "module",
   "bin": {
-    "portctl": "dist/index.js"
+    "portctl": "dist/cli.js"
   },
   "main": "dist/index.js",
   "files": [
@@ -12,9 +12,19 @@
   ],
   "scripts": {
     "start": "bun index.ts",
-    "build": "bun build index.ts --outfile=dist/index.js --target=bun --external @opentui/core --banner \"#!/usr/bin/env bun\" && chmod +x dist/index.js"
+    "build": "bun build index.ts --outfile=dist/index.js --target=node --format=esm --external @opentui/core --banner \"#!/usr/bin/env node\" && bun build cli.ts --outfile=dist/cli.js --target=node --format=esm --banner \"#!/usr/bin/env node\" && chmod +x dist/index.js dist/cli.js",
+    "test": "bun run build && node --test test/",
+    "test:node": "node --test test/",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=26.1.0"
   },
   "dependencies": {
     "@opentui/core": "^0.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.0",
+    "typescript": "^5.9.0"
   }
 }

@@ -1,0 +1,62 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Node ${{ matrix.node }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: ["26.x"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Bun is only needed to produce dist/ — the tests themselves run on Node.
+      - name: Setup Bun (build only)
+        uses: oven-sh/setup-bun@v2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test (Node, no Bun on the test runtime)
+        run: node --test test/
+
+  # Proves the suite doesn't secretly depend on Bun being installed at runtime.
+  node-only:
+    name: Node without Bun
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "26.x"
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - name: Run tests with Bun removed from PATH
+        run: |
+          rm -rf "$HOME/.bun/bin"
+          ! command -v bun
+          node --test test/

@@ -4,8 +4,9 @@ A cross-platform terminal UI for listing TCP listening ports and killing the
 processes that own them. Useful for quickly freeing up a port that's stuck
 occupied by a runaway or background process.
 
-Built with [Bun](https://bun.sh) and
-[`@opentui/core`](https://github.com/sst/opentui). No other dependencies.
+Built with [`@opentui/core`](https://github.com/sst/opentui). Runs on
+[Bun](https://bun.sh) **or** [Node.js](https://nodejs.org) 26.1+ with no other
+dependencies.
 
 ## Features
 
@@ -19,7 +20,9 @@ Built with [Bun](https://bun.sh) and
 
 ## Requirements
 
-- [Bun](https://bun.sh) runtime
+- [Bun](https://bun.sh) **or** [Node.js](https://nodejs.org) 26.1+. When run
+  under Node, the CLI automatically re-launches itself with Node's experimental
+  `--experimental-ffi` flag (OpenTUI loads its native core through `node:ffi`).
 - Platform-specific CLI tools available on `PATH`:
   - **macOS**: `lsof`
   - **Linux**: `ss` (preferred), falls back to `netstat`, then `lsof`
@@ -31,18 +34,16 @@ Built with [Bun](https://bun.sh) and
 
 ## Install
 
-The CLI is built on [Bun](https://bun.sh) and OpenTUI's native renderer, so
-Bun must be installed and on your `PATH` to run it.
-
 ```bash
-# from npm
+# from npm (works with either runtime)
 npm install -g @ashhitch/portctl
 # or run once without installing
 npx @ashhitch/portctl
 ```
 
-> `npx`/`npm` only fetch the package — they don't install Bun. If you don't have
-> it yet, install it first: `curl -fsSL https://bun.sh/install | bash`
+> Node users need Node 26.1+ (for the experimental `node:ffi` module); the CLI
+> adds the required flag itself, so no extra setup. Alternatively install
+> [Bun](https://bun.sh): `curl -fsSL https://bun.sh/install | bash`
 
 For local development:
 
@@ -78,7 +79,8 @@ preserves your current selection when possible.
 
 ## How it works
 
-`src/ports.ts` shells out to the platform's native networking tools, parses
+`src/ports.ts` shells out to the platform's native networking tools via
+`node:child_process` (runtime-agnostic — works on both Bun and Node), parses
 their output into a common `PortEntry` shape, and exposes two functions:
 
 - `listListeningPorts()` — returns TCP listeners sorted by port
@@ -93,12 +95,41 @@ showing port count, last refresh time, and the active confirmation prompt.
 
 ```
 portctl/
-├── index.ts          # TUI: layout, key handling, refresh + kill flow
+├── index.ts          # Entry: creates the renderer and mounts the app
+├── cli.ts            # Launcher: sets Node's --experimental-ffi flag when needed
 ├── src/
-│   └── ports.ts      # Cross-platform port detection and process killing
+│   ├── app.ts        # TUI: layout, key handling, refresh + kill flow
+│   ├── ports.ts      # Cross-platform port detection and process killing
+│   └── runtime.ts    # Launcher decisions (FFI eligibility, re-exec args)
+├── test/             # node:test suites (run on plain Node)
 ├── package.json
 └── bun.lock
 ```
+
+## Tests
+
+The suite runs on **plain Node** using the built-in `node:test` runner — no test
+dependencies, and it exercises the same `dist/` output that npm publishes:
+
+```bash
+bun run build      # dist/ is what the tests exercise
+npm test           # build + node --test test/
+npm run test:node  # tests only (dist/ must already be built)
+npm run typecheck
+```
+
+| Suite | Covers |
+| ----- | ------ |
+| `test/boot.test.ts` | Boots the real `dist/cli.js` on Node, renders the list, exits 0 |
+| `test/app.test.ts` | Headless TUI tests via `@opentui/core/testing` (keys, prompt, kill flow) |
+| `test/cli-launcher.test.ts` | `--experimental-ffi` re-exec, retry guard, signal propagation |
+| `test/ports.test.ts` | lsof/ss/netstat/tasklist parsing, backend dispatch, kill semantics, a real listener |
+| `test/build.test.ts` | Artifact shebang/exec bit, ESM parse, no Bun-only APIs, `engines` |
+| `test/package.test.ts` | `npm pack` contents and modes |
+
+Interactive TUI behaviour is tested headlessly rather than through a PTY, so the
+suite runs the same on macOS, Linux, and Windows. CI runs it on Node 26 across
+all three (`.github/workflows/test.yml`).
 
 ## License
 

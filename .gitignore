@@ -21,6 +21,9 @@ package-lock.json
 /build
 /dist
 
+# tooling caches
+/.fallow
+
 # misc
 .DS_Store
 .env.local
