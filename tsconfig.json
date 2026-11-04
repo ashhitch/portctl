@@ -7,9 +7,10 @@
     "types": ["node"],
     "strict": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["index.ts", "cli.ts", "src/**/*.ts"]
+  "include": ["index.ts", "cli.ts", "src/**/*.ts", "test/**/*.ts"]
 }

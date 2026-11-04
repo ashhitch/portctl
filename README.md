@@ -95,13 +95,41 @@ showing port count, last refresh time, and the active confirmation prompt.
 
 ```
 portctl/
-├── index.ts          # TUI: layout, key handling, refresh + kill flow
+├── index.ts          # Entry: creates the renderer and mounts the app
 ├── cli.ts            # Launcher: sets Node's --experimental-ffi flag when needed
 ├── src/
-│   └── ports.ts      # Cross-platform port detection and process killing
+│   ├── app.ts        # TUI: layout, key handling, refresh + kill flow
+│   ├── ports.ts      # Cross-platform port detection and process killing
+│   └── runtime.ts    # Launcher decisions (FFI eligibility, re-exec args)
+├── test/             # node:test suites (run on plain Node)
 ├── package.json
 └── bun.lock
 ```
+
+## Tests
+
+The suite runs on **plain Node** using the built-in `node:test` runner — no test
+dependencies, and it exercises the same `dist/` output that npm publishes:
+
+```bash
+bun run build      # dist/ is what the tests exercise
+npm test           # build + node --test test/
+npm run test:node  # tests only (dist/ must already be built)
+npm run typecheck
+```
+
+| Suite | Covers |
+| ----- | ------ |
+| `test/boot.test.ts` | Boots the real `dist/cli.js` on Node, renders the list, exits 0 |
+| `test/app.test.ts` | Headless TUI tests via `@opentui/core/testing` (keys, prompt, kill flow) |
+| `test/cli-launcher.test.ts` | `--experimental-ffi` re-exec, retry guard, signal propagation |
+| `test/ports.test.ts` | lsof/ss/netstat/tasklist parsing, backend dispatch, kill semantics, a real listener |
+| `test/build.test.ts` | Artifact shebang/exec bit, ESM parse, no Bun-only APIs, `engines` |
+| `test/package.test.ts` | `npm pack` contents and modes |
+
+Interactive TUI behaviour is tested headlessly rather than through a PTY, so the
+suite runs the same on macOS, Linux, and Windows. CI runs it on Node 26 across
+all three (`.github/workflows/test.yml`).
 
 ## License
 

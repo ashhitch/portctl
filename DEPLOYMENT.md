@@ -68,23 +68,29 @@ which is experimental (Node 26.1+) and gated behind that flag.
 
 ```jsonc
 {
-  "name": "portctl",
-  "version": "0.1.0",
+  "name": "@ashhitch/portctl",
+  "version": "0.2.0",
   "type": "module",
   "bin": {
-    "portctl": "./index.ts"
+    "portctl": "dist/cli.js"
   },
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
-    "start": "bun index.ts"
+    "start": "bun index.ts",
+    "build": "bun build index.ts --outfile=dist/index.js --target=node --format=esm --external @opentui/core --banner \"#!/usr/bin/env node\" && bun build cli.ts --outfile=dist/cli.js --target=node --format=esm --banner \"#!/usr/bin/env node\" && chmod +x dist/index.js dist/cli.js",
+    "test": "bun run build && node --test test/",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=26.1.0"
   },
   "dependencies": {
     "@opentui/core": "^0.4.2"
-  },
-  "files": [
-    "index.ts",
-    "src",
-    "README.md"
-  ]
+  }
 }
 ```
 
@@ -99,8 +105,9 @@ Notes:
 ### 2b. Sanity-check the tarball
 
 ```bash
-bun pm pack              # produces portctl-0.1.0.tgz
-tar -tzf portctl-0.1.0.tgz   # verify only index.ts, src/, README.md are inside
+bun run build            # produce dist/ first — it's what gets published
+bun pm pack              # produces ashhitch-portctl-0.2.0.tgz
+tar -tzf ashhitch-portctl-0.2.0.tgz   # verify only dist/, README.md, package.json are inside
 ```
 
 ### 2c. Publish
@@ -346,6 +353,8 @@ signing is less urgent if Homebrew is your primary channel.
 
 - [ ] `package.json` version bumped
 - [ ] `bun install` + `bun index.ts` works from a clean clone
+- [ ] `npm test` passes (builds `dist/`, then runs the Node test suite)
+- [ ] `npm run typecheck` is clean
 - [ ] All target binaries build locally (or in CI)
 - [ ] Smoke-test each binary on its target OS
 - [ ] Tag pushed, CI release workflow ran green

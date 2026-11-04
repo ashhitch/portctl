@@ -4,6 +4,12 @@
 // When running on Node without the flag, re-exec ourselves with it (once) so
 // `portctl` works out of the box after `npm i -g`.
 import { spawnSync } from "node:child_process"
+import {
+  RETRY_ENV,
+  UNSUPPORTED_RUNTIME_MESSAGE,
+  buildReexecArgs,
+  shouldReexec,
+} from "./src/runtime.ts"
 
 const hasBun = typeof (globalThis as { Bun?: unknown }).Bun !== "undefined"
 
@@ -16,26 +22,37 @@ async function nodeFfiAvailable(): Promise<boolean> {
   }
 }
 
-if (!hasBun) {
-  const hasFlag = process.execArgv.includes("--experimental-ffi")
-  const retried = process.env.PORTCTL_FFI_RETRY === "1"
-  const [major, minor] = process.versions.node.split(".").map(Number)
-  // node:ffi landed in Node 26.1; don't re-exec with a flag older Node rejects.
-  const ffiEligible = major > 26 || (major === 26 && minor >= 1)
+/** Does this Node build recognize the given CLI flag? Probed before using `--allow-ffi`. */
+function supportsFlag(flag: string): boolean {
+  const probe = spawnSync(process.execPath, [flag, "--eval", "0"], { stdio: "ignore" })
+  return probe.status === 0
+}
 
-  if (!(await nodeFfiAvailable())) {
-    if (ffiEligible && !hasFlag && !retried) {
-      const result = spawnSync(
-        process.execPath,
-        ["--experimental-ffi", "--disable-warning=ExperimentalWarning", ...process.argv.slice(1)],
-        { stdio: "inherit", env: { ...process.env, PORTCTL_FFI_RETRY: "1" } },
-      )
-      process.exit(result.status ?? 1)
-    }
-    console.error(
-      "portctl needs the experimental `node:ffi` module (Node.js 26.1+ with FFI support) or Bun.\n" +
-        "This Node.js build does not expose `node:ffi`; install a newer Node.js or Bun and try again.",
+if (!hasBun) {
+  const retried = process.env[RETRY_ENV] === "1"
+  const ffiAvailable = await nodeFfiAvailable()
+
+  if (
+    shouldReexec({
+      hasBun,
+      ffiAvailable,
+      execArgv: process.execArgv,
+      retried,
+      nodeVersion: process.versions.node,
+    })
+  ) {
+    const result = spawnSync(
+      process.execPath,
+      buildReexecArgs(process.argv.slice(1), { allowFfi: supportsFlag("--allow-ffi") }),
+      { stdio: "inherit", env: { ...process.env, [RETRY_ENV]: "1" } },
     )
+    // Propagate signal termination (e.g. Ctrl-C) instead of flattening to exit 1.
+    if (result.signal) process.kill(process.pid, result.signal)
+    process.exit(result.status ?? 1)
+  }
+
+  if (!ffiAvailable) {
+    console.error(UNSUPPORTED_RUNTIME_MESSAGE)
     process.exit(1)
   }
 }
