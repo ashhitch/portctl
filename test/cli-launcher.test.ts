@@ -54,7 +54,7 @@ function makeHarness(entrySource = STUB_ENTRY): Harness {
   return {
     dir,
     run({ nodeArgs = [], args = [], env = {} } = {}) {
-      const env2: NodeJS.ProcessEnv = { ...process.env, ...env }
+      const env2: NodeJS.ProcessEnv = { ...process.env }
       delete env2.PORTCTL_FFI_RETRY
       Object.assign(env2, env)
       const result = spawnSync(process.execPath, [...nodeArgs, "cli.js", ...args], {

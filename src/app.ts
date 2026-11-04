@@ -35,7 +35,7 @@ export interface App {
   destroy(): void
 }
 
-export const REFRESH_MS = 5000
+const REFRESH_MS = 5000
 
 /** Return the current time as an `HH:MM:SS` stamp for the "last refreshed" indicator. */
 export function nowStamp(d: Date = new Date()): string {

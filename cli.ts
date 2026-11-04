@@ -4,6 +4,8 @@
 // When running on Node without the flag, re-exec ourselves with it (once) so
 // `portctl` works out of the box after `npm i -g`.
 import { spawnSync } from "node:child_process"
+import { existsSync } from "node:fs"
+import { fileURLToPath } from "node:url"
 import {
   RETRY_ENV,
   UNSUPPORTED_RUNTIME_MESSAGE,
@@ -57,5 +59,11 @@ if (!hasBun) {
   }
 }
 
-// Non-static specifier so the bundler leaves this as a runtime import.
-await import(new URL("./index.js", import.meta.url).href)
+// Non-static specifier so the bundler leaves this as a runtime import. After
+// `bun run build` a compiled `index.js` sits next to us in dist/; when run from
+// source (`node cli.ts` or `bun cli.ts`) only `index.ts` exists, so fall back.
+const builtEntry = new URL("./index.js", import.meta.url)
+const entry = existsSync(fileURLToPath(builtEntry))
+  ? builtEntry
+  : new URL("./index.ts", import.meta.url)
+await import(entry.href)

@@ -19,6 +19,9 @@ if (!existsSync(cliPath)) {
 }
 
 const CRASHES = /TextBuffer is destroyed|Argument 4 must be a uint32|UnhandledPromiseRejection/
+// The first paint shows either populated rows ("listening on <addr>:<port>") or
+// the empty state — a host with zero listeners is still a successful boot.
+const BOOTED = /listening on|No listening ports found/
 const CTRL_C = "\u0003"
 // Windows consoles deliver Ctrl-C as a console control event rather than a byte
 // on stdin, so it can't be simulated over a pipe.
@@ -27,7 +30,7 @@ const skipCtrlC = process.platform === "win32" ? "Ctrl-C can't be piped on Windo
 test("boots and renders the port list", async () => {
   const cli = spawnCli(cliPath)
   try {
-    await cli.waitFor("listening on")
+    await cli.waitFor(BOOTED)
     assert.doesNotMatch(cli.output(), CRASHES)
   } finally {
     await cli.dispose()
@@ -39,7 +42,7 @@ test("boots when node:ffi starts out unavailable (launcher re-exec path)", async
   // re-exec itself with the flag — the path every plain-Node user takes.
   const cli = spawnCli(cliPath, { nodeArgs: ["--no-experimental-ffi"] })
   try {
-    await cli.waitFor("listening on")
+    await cli.waitFor(BOOTED)
     assert.doesNotMatch(cli.output(), CRASHES)
   } finally {
     await cli.dispose()
@@ -47,7 +50,7 @@ test("boots when node:ffi starts out unavailable (launcher re-exec path)", async
 })
 
 test("exits cleanly on Ctrl-C", { skip: skipCtrlC }, async () => {
-  const result = await runCli(cliPath, { waitFor: "listening on", input: CTRL_C })
+  const result = await runCli(cliPath, { waitFor: BOOTED, input: CTRL_C })
   assert.equal(result.code, 0, tail(result.output))
   assert.doesNotMatch(result.output, CRASHES)
 })
@@ -63,7 +66,7 @@ test("Ctrl-C while the initial refresh is in flight exits cleanly", { skip: skip
 test("manual refresh with `r` does not crash", { skip: skipCtrlC }, async () => {
   const cli = spawnCli(cliPath)
   try {
-    await cli.waitFor("listening on")
+    await cli.waitFor(BOOTED)
     cli.write("r")
     await sleep(750)
     const exit = await sendUntilExit(cli, CTRL_C)
